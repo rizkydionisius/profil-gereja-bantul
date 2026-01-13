@@ -4,7 +4,7 @@ export interface SiteConfig {
   description: string;
   address: string;
   email: string;
-  phone: string; // Changed from whatsapp to general phone contact
+  phone: string;
   socials: {
     instagram: string;
     youtube: string;
@@ -49,7 +49,7 @@ export const navigation: NavigationItem[] = [
   { label: "Beranda", href: "/" },
   { 
     label: "Profil", 
-    href: "/profil", // Fallback if clicked
+    href: "/profil",
     children: [
       { label: "Sejarah", href: "/profil/sejarah" },
       { label: "Visi Misi Paroki", href: "/profil/visi-misi" },
@@ -57,8 +57,22 @@ export const navigation: NavigationItem[] = [
       { label: "Tim Pelayanan, Lingkungan, Komunitas", href: "/profil/lingkungan" },
     ]
   },
-  { label: "Jadwal", href: "/jadwal" },
-  { label: "Warta", href: "/warta" },
+  {
+    label: "Informasi",
+    href: "#", // Dropdown group
+    children: [
+      { label: "Jadwal Misa", href: "/jadwal" },
+      { label: "Warta Paroki", href: "/warta" },
+      { label: "Galeri Kegiatan", href: "/galeri" },
+    ]
+  },
+  {
+    label: "Pelayanan",
+    href: "#",
+    children: [
+      { label: "Unduhan Formulir", href: "/unduhan" },
+    ]
+  },
   { label: "Kontak", href: "/kontak" },
 ];
 

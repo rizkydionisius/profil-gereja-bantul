@@ -1,14 +1,10 @@
-import Navbar from "@/components/Navbar";
 import HeroSection from "@/components/HeroSection";
 import ScheduleSection from "@/components/ScheduleSection";
-import Footer from "@/components/Footer";
 import { siteConfig } from "@/lib/data";
 
 export default function Home() {
   return (
-    <main className="min-h-screen bg-slate-50 font-sans text-slate-900 selection:bg-red-100 selection:text-red-900">
-      <Navbar />
-      
+    <>
       <HeroSection />
 
       {/* Tentang Paroki Section */}
@@ -37,8 +33,6 @@ export default function Home() {
       </section>
 
       <ScheduleSection />
-      
-      <Footer />
-    </main>
+    </>
   );
 }
