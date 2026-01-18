@@ -2,17 +2,24 @@
 
 import React, { useState } from "react";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { Menu, X, ChevronDown, Phone } from "lucide-react";
 import { siteConfig, navigation } from "@/lib/data";
 
 export default function Navbar() {
   const [isOpen, setIsOpen] = useState(false);
   const [activeDropdown, setActiveDropdown] = useState<string | null>(null);
+  const pathname = usePathname();
 
   const toggleMenu = () => {
     setIsOpen(!isOpen);
-    setActiveDropdown(null); // Reset dropdown on mobile toggle
+    setActiveDropdown(null);
   };
+
+  // Hide Navbar on Admin pages and Login page
+  if (pathname.startsWith("/admin") || pathname === "/login") {
+    return null;
+  }
 
   const toggleDropdown = (label: string) => {
     if (activeDropdown === label) {
@@ -20,6 +27,14 @@ export default function Navbar() {
     } else {
       setActiveDropdown(label);
     }
+  };
+
+  // Helper to check if link is active
+  const isActive = (href: string) => {
+    if (href === "/") {
+      return pathname === "/";
+    }
+    return pathname.startsWith(href);
   };
 
   return (
@@ -36,11 +51,15 @@ export default function Navbar() {
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-8">
             {navigation.map((item) => {
+              const isItemActive = isActive(item.href) || (item.children && item.children.some(child => isActive(child.href)));
+              
               if (item.children) {
                 return (
                   <div key={item.label} className="relative group">
                     <button
-                      className="flex items-center gap-1 text-sm font-medium text-slate-700 hover:text-amber-600 transition-colors py-2"
+                      className={`flex items-center gap-1 text-sm font-medium transition-colors py-2 ${
+                        isItemActive ? "text-amber-600" : "text-slate-700 hover:text-amber-600"
+                      }`}
                     >
                       {item.label}
                       <ChevronDown size={16} />
@@ -51,7 +70,11 @@ export default function Navbar() {
                         <Link
                           key={child.label}
                           href={child.href}
-                          className="block px-4 py-3 text-sm text-slate-700 hover:bg-amber-50 hover:text-amber-700 transition-colors border-b border-gray-50 last:border-0"
+                          className={`block px-4 py-3 text-sm transition-colors border-b border-gray-50 last:border-0 ${
+                            isActive(child.href) 
+                              ? "bg-amber-50 text-amber-700" 
+                              : "text-slate-700 hover:bg-amber-50 hover:text-amber-700"
+                          }`}
                         >
                           {child.label}
                         </Link>
@@ -64,7 +87,9 @@ export default function Navbar() {
                 <Link
                   key={item.label}
                   href={item.href}
-                  className="text-sm font-medium text-slate-700 hover:text-amber-600 transition-colors"
+                  className={`text-sm font-medium transition-colors ${
+                    isItemActive ? "text-amber-600 font-semibold" : "text-slate-700 hover:text-amber-600"
+                  }`}
                 >
                   {item.label}
                 </Link>
@@ -100,12 +125,16 @@ export default function Navbar() {
         <div className="md:hidden absolute top-20 left-0 w-full bg-white border-b border-gray-100 shadow-lg animate-in slide-in-from-top-5 fade-in duration-200 h-[calc(100vh-5rem)] overflow-y-auto">
           <div className="flex flex-col p-4 space-y-2">
             {navigation.map((item) => {
+               const isItemActive = isActive(item.href) || (item.children && item.children.some(child => isActive(child.href)));
+
                if (item.children) {
                  return (
                    <div key={item.label} className="border-b border-gray-50 pb-2">
                       <button
                         onClick={() => toggleDropdown(item.label)}
-                        className="flex w-full items-center justify-between px-2 py-3 text-base font-medium text-slate-800"
+                        className={`flex w-full items-center justify-between px-2 py-3 text-base font-medium ${
+                          isItemActive ? "text-amber-600" : "text-slate-800"
+                        }`}
                       >
                         {item.label}
                         <ChevronDown 
@@ -119,7 +148,9 @@ export default function Navbar() {
                              <Link
                                key={child.label}
                                href={child.href}
-                               className="block px-2 py-2 text-sm text-slate-600 hover:text-amber-600"
+                               className={`block px-2 py-2 text-sm ${
+                                  isActive(child.href) ? "text-amber-600 font-semibold" : "text-slate-600 hover:text-amber-600"
+                               }`}
                                onClick={() => setIsOpen(false)}
                              >
                                {child.label}
@@ -135,7 +166,9 @@ export default function Navbar() {
                 <Link
                   key={item.label}
                   href={item.href}
-                  className="block px-2 py-3 text-base font-medium text-slate-800 hover:text-amber-600 hover:bg-amber-50 rounded-md transition-colors"
+                  className={`block px-2 py-3 text-base font-medium rounded-md transition-colors ${
+                    isItemActive ? "text-amber-600 bg-amber-50" : "text-slate-800 hover:text-amber-600 hover:bg-amber-50"
+                  }`}
                   onClick={() => setIsOpen(false)}
                 >
                   {item.label}

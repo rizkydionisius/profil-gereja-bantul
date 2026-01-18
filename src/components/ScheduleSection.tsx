@@ -1,27 +1,87 @@
 import React from "react";
-import { schedules, ScheduleItem } from "@/lib/data";
-import { Clock, MapPin } from "lucide-react";
+import { Clock, Calendar } from "lucide-react";
+import { createClient } from "@/utils/supabase/server";
 
-export default function ScheduleSection() {
-  // Group schedules by category
-  const categorizedSchedules = schedules.reduce((acc, schedule) => {
-    if (!acc[schedule.category]) {
-      acc[schedule.category] = [];
+// Define the shape of our grouped data
+type GroupedSchedule = {
+  church_name: string;
+  items: {
+    label: string;
+    time: string;
+    note: string | null;
+  }[];
+};
+
+import { Database } from "@/types/database";
+
+export default async function ScheduleSection() {
+  const supabase = await createClient();
+  
+  // 1. Fetch Data
+  const { data, error } = await supabase
+    .from("mass_schedules")
+    .select("*")
+    .order("church_name", { ascending: true });
+
+  const schedules = data as Database['public']['Tables']['mass_schedules']['Row'][] | null;
+
+  if (error) {
+    console.error("Error fetching schedules:", error);
+    return (
+      <section id="jadwal" className="py-20 bg-slate-50 text-center">
+         <p className="text-red-500">Maaf, gagal memuat jadwal misa saat ini.</p>
+      </section>
+    );
+  }
+
+  // 2. Group Data by Church Name
+  const groupedData: GroupedSchedule[] = [];
+  
+  (schedules || []).forEach((schedule) => {
+    let group = groupedData.find((g) => g.church_name === schedule.church_name);
+    
+    if (!group) {
+      group = {
+        church_name: schedule.church_name,
+        items: []
+      };
+      groupedData.push(group);
     }
-    acc[schedule.category].push(schedule);
-    return acc;
-  }, {} as Record<string, ScheduleItem[]>);
+    
+    group.items.push({
+      label: schedule.day,
+      time: schedule.time,
+      note: schedule.description || schedule.schedule_type
+    });
+  });
 
-  // Misa Mingguan (Main Focus)
-  const misaMingguan = categorizedSchedules["Misa Mingguan"] || [];
-  
-  // Other Masses (Harian, Jumat Pertama)
-  const misaHarian = categorizedSchedules["Misa Harian"] || [];
-  const jumatPertama = categorizedSchedules["Jumat Pertama"] || [];
-  
-  // Combine for balanced layout or display logic
-  // Requirement: "Misa Harian" and "Jumat Pertama" balanced.
-  
+  // 3. Apply Custom Sort Order
+  const CHURCH_ORDER = [
+    "Gereja Santo Yakobus Bantul",
+    "Gereja Mater Dei Imogiri",
+    "Gereja Maria Rosari Gesikan",
+    "Gereja Yakobus Alfeus Pajangan"
+  ];
+
+  groupedData.sort((a, b) => {
+    const indexA = CHURCH_ORDER.indexOf(a.church_name);
+    const indexB = CHURCH_ORDER.indexOf(b.church_name);
+    
+    // If both are found in the priority list, sort by their index
+    if (indexA !== -1 && indexB !== -1) {
+      return indexA - indexB;
+    }
+    
+    // If only A is in the list, it takes priority (put it first)
+    if (indexA !== -1) return -1;
+    
+    // If only B is in the list, it takes priority
+    if (indexB !== -1) return 1;
+    
+    // If neither keys are in the priority list, fallback to alphabetical
+    return a.church_name.localeCompare(b.church_name);
+  });
+
   return (
     <section id="jadwal" className="py-20 bg-slate-50">
       <div className="container mx-auto px-4 md:px-8 max-w-7xl">
@@ -31,89 +91,50 @@ export default function ScheduleSection() {
           </h2>
           <div className="w-24 h-1 bg-amber-500 mx-auto rounded-full" />
           <p className="mt-4 text-slate-600 max-w-2xl mx-auto">
-            Jadwal perayaan Ekaristi di Gereja Santo Yakobus Bantul.
+            Jadwal perayaan Ekaristi di Wilayah Paroki Santo Yakobus Bantul.
             Silakan hadir sesuai jadwal yang tersedia.
           </p>
         </div>
 
-        <div className="space-y-16">
-          {/* MISA MINGGUAN SECTION */}
-          <div>
-            <h3 className="text-2xl font-bold text-slate-700 mb-8 border-l-4 border-amber-500 pl-4">
-              Misa Mingguan
-            </h3>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {misaMingguan.map((item) => (
-                <div
-                  key={item.id}
-                  className="bg-white rounded-xl p-6 shadow-sm hover:shadow-md transition-shadow border border-slate-100 group"
-                >
-                  <div className="flex flex-col items-center text-center">
-                    <span className="inline-block px-3 py-1 bg-amber-50 text-amber-700 text-sm font-semibold rounded-full mb-4">
-                      {item.day}
-                    </span>
-                    
-                    <div className="flex items-center gap-2 text-4xl font-extrabold text-slate-800 mb-2">
-                      <Clock className="w-6 h-6 text-slate-400 group-hover:text-amber-600 transition-colors" />
-                      {item.time}
-                    </div>
-                    
-                    <div className="w-full h-px bg-slate-100 my-4" />
-                    
-                    <div className="space-y-2 text-slate-600">
-                      <p className="font-medium text-slate-900">{item.language}</p>
-                      <div className="flex items-center justify-center gap-1.5 text-sm text-slate-500">
-                        <MapPin size={16} />
-                        <span>{item.location}</span>
+        {groupedData.length === 0 ? (
+           <div className="text-center text-slate-500 py-10 bg-white rounded-xl border border-slate-100 p-8 shadow-sm max-w-lg mx-auto">
+             <Calendar className="w-12 h-12 mx-auto text-slate-300 mb-4" />
+             <p className="text-lg font-medium text-slate-600">Jadwal Belum Tersedia</p>
+             <p className="text-sm text-slate-400 mt-2">Silakan hubungi sekretariat untuk informasi lebih lanjut.</p>
+           </div>
+        ) : (
+          <div className="space-y-16">
+            {groupedData.map((church, index) => (
+              <div key={index}>
+                 <div className="flex items-center gap-3 mb-8 justify-center md:justify-start">
+                    <Calendar className="w-8 h-8 text-amber-600 shrink-0" />
+                    <h3 className="text-2xl md:text-3xl font-bold text-slate-800 border-l-4 border-amber-500 pl-4">
+                      {church.church_name}
+                    </h3>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {church.items.map((item, idx) => (
+                      <div 
+                        key={idx} 
+                        className="bg-white rounded-xl p-8 shadow-sm border border-slate-100 hover:shadow-md transition-shadow text-center group h-full flex flex-col items-center justify-center"
+                      >
+                        <div className="inline-block px-4 py-1.5 bg-amber-50 text-amber-700 font-bold rounded-full mb-6">
+                          {item.label}
+                        </div>
+                        <div className="flex items-center justify-center gap-2 text-4xl font-extrabold text-slate-800 mb-4 group-hover:text-amber-600 transition-colors">
+                          <Clock className="w-8 h-8 text-amber-500" />
+                          <span className="whitespace-nowrap">{item.time}</span>
+                        </div>
+                        <div className="w-full h-px bg-slate-100 my-4" />
+                        <p className="text-slate-500 font-medium">{item.note}</p>
                       </div>
-                    </div>
+                    ))}
                   </div>
-                </div>
-              ))}
-            </div>
+              </div>
+            ))}
           </div>
-
-          {/* MISA HARIAN & JUMAT PERTAMA (BALANCED GRID 2 COLS) */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-            {/* Misa Harian */}
-            <div className="bg-white rounded-xl p-8 shadow-sm border border-slate-100 flex flex-col items-center text-center h-full">
-              <h3 className="text-xl font-bold text-slate-700 mb-6 border-b-2 border-slate-100 pb-2 w-full">
-                Misa Harian
-              </h3>
-              {misaHarian.map((item) => (
-                <div key={item.id} className="w-full">
-                  <span className="inline-block px-3 py-1 bg-slate-100 text-slate-600 text-sm font-semibold rounded-full mb-4">
-                    {item.day}
-                  </span>
-                  <div className="flex justify-center items-center gap-2 text-4xl font-extrabold text-slate-800 mb-2">
-                    <Clock className="w-6 h-6 text-slate-400" />
-                    {item.time}
-                  </div>
-                  <p className="text-slate-500 mt-2">{item.location}</p>
-                </div>
-              ))}
-            </div>
-
-            {/* Jumat Pertama */}
-            <div className="bg-white rounded-xl p-8 shadow-sm border border-slate-100 flex flex-col items-center text-center h-full">
-              <h3 className="text-xl font-bold text-slate-700 mb-6 border-b-2 border-slate-100 pb-2 w-full">
-                Misa Jumat Pertama
-              </h3>
-               {jumatPertama.map((item) => (
-                <div key={item.id} className="w-full">
-                   <span className="inline-block px-3 py-1 bg-amber-50 text-amber-700 text-sm font-semibold rounded-full mb-4">
-                    Setiap {item.day}
-                  </span>
-                  <div className="flex justify-center items-center gap-2 text-4xl font-extrabold text-slate-800 mb-2">
-                    <Clock className="w-6 h-6 text-amber-500" />
-                    {item.time}
-                  </div>
-                   <p className="text-slate-500 mt-2">{item.location}</p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+        )}
       </div>
     </section>
   );
